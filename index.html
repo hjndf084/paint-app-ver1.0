@@ -3,58 +3,79 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>塗料配合計算</title>
+<title>塗料調合アプリver1.0</title>
 
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#007bff">
 <link rel="apple-touch-icon" href="icon.png">
 
 <style>
-body { font-family: sans-serif; padding: 15px; background:#f7f7f7; }
-h2 { margin-bottom:10px; }
-label { font-weight:bold; }
+body {
+  font-family: sans-serif;
+  padding: 15px;
+  background: #f4f6f8;
+}
+h2 {
+  text-align: center;
+}
+label {
+  font-weight: bold;
+  display: block;
+  margin-top: 12px;
+}
 input {
   width: 100%;
   padding: 12px;
-  margin: 5px 0 12px 0;
   font-size: 18px;
+  margin-top: 5px;
+  box-sizing: border-box;
 }
 button {
   width: 100%;
   padding: 15px;
   font-size: 20px;
-  background:#007bff;
-  color:white;
-  border:none;
-  border-radius:6px;
+  margin-top: 18px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
 }
 .result {
-  margin-top:20px;
-  background:white;
-  padding:15px;
-  border-radius:6px;
-  font-size:18px;
+  margin-top: 20px;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  font-size: 18px;
+  line-height: 1.7;
+}
+.big {
+  font-size: 22px;
+  font-weight: bold;
+}
+.note {
+  font-size: 14px;
+  color: #666;
 }
 </style>
 </head>
 
 <body>
 
-<h2>塗料配合計算（現場版）</h2>
+<h2>塗料調合アプリver1.0</h2>
 
-<label>① 1個あたり使用量 (g)</label>
-<input type="number" id="perUnit">
+<label>① 1個（または1パレット）当たりの使用量 g</label>
+<input type="number" id="perUnit" placeholder="例：70">
 
-<label>② 配合比（主剤 / 硬化剤 / シンナー）</label>
-<input type="number" id="main" placeholder="主剤">
-<input type="number" id="hard" placeholder="硬化剤">
-<input type="number" id="thinner" placeholder="シンナー">
+<label>② 配合比率</label>
+<input type="number" id="mainRatio" placeholder="主剤 比率">
+<input type="number" id="hardRatio" value="1" placeholder="硬化剤 比率">
+<input type="number" id="thinRatio" placeholder="シンナー 比率">
 
-<label>③ 生産数</label>
-<input type="number" id="qty">
+<label>③ 生産数（またはパレット数）</label>
+<input type="number" id="qty" placeholder="例：20">
 
-<label>④ タンク最低量（g）※デフォルト500</label>
-<input type="number" id="tank" value="500">
+<label>タンク最低必要量 g ※デフォルト600</label>
+<input type="number" id="tank" value="600">
 
 <button onclick="calc()">計算する</button>
 
@@ -62,34 +83,51 @@ button {
 
 <script>
 function calc() {
+  const perUnit = Number(document.getElementById("perUnit").value);
+  const mainRatio = Number(document.getElementById("mainRatio").value);
+  const hardRatio = Number(document.getElementById("hardRatio").value);
+  const thinRatio = Number(document.getElementById("thinRatio").value);
+  const qty = Number(document.getElementById("qty").value);
+  const tank = Number(document.getElementById("tank").value);
 
-  let perUnit = Number(document.getElementById("perUnit").value);
-  let m = Number(document.getElementById("main").value);
-  let h = Number(document.getElementById("hard").value);
-  let t = Number(document.getElementById("thinner").value);
-  let qty = Number(document.getElementById("qty").value);
-  let tank = Number(document.getElementById("tank").value);
-
-  let sumRatio = m + h + t;
-
-  if(perUnit === 0 || sumRatio === 0 || qty === 0){
+  if (!perUnit || !mainRatio || !hardRatio || !thinRatio || !qty) {
     document.getElementById("result").innerHTML = "入力不足です";
     return;
   }
 
-  let useTotal = perUnit * qty;
-  let total = useTotal + tank;
+  const ratioTotal = mainRatio + hardRatio + thinRatio;
 
-  let mainG = total / sumRatio * m;
-  let hardG = total / sumRatio * h;
-  let thinnerG = total / sumRatio * t;
+  // 必要な総塗料量
+  const actualUse = perUnit * qty;
+  const totalRequired = actualUse + tank;
+
+  // まず理論上の硬化剤量を計算
+  const hardRaw = totalRequired / ratioTotal * hardRatio;
+
+  // 硬化剤は10g単位で切り上げ
+  const hardRounded = Math.ceil(hardRaw / 10) * 10;
+
+  // 切り上げ後の硬化剤を基準に、主剤・シンナーを再計算
+  const base = hardRounded / hardRatio;
+  const mainG = base * mainRatio;
+  const thinG = base * thinRatio;
+
+  const finalTotal = mainG + hardRounded + thinG;
 
   document.getElementById("result").innerHTML =
-    "■実使用量: " + useTotal.toFixed(1) + " g<br>" +
-    "■タンク込み合計: " + total.toFixed(1) + " g<br><br>" +
-    "主剤: " + mainG.toFixed(1) + " g<br>" +
-    "硬化剤: " + hardG.toFixed(1) + " g<br>" +
-    "シンナー: " + thinnerG.toFixed(1) + " g";
+    "<div class='big'>計算結果</div><br>" +
+    "実使用量： " + actualUse.toFixed(1) + " g<br>" +
+    "タンク込み必要量： " + totalRequired.toFixed(1) + " g<br><br>" +
+
+    "硬化剤 理論値： " + hardRaw.toFixed(1) + " g<br>" +
+    "硬化剤 切り上げ後： <b>" + hardRounded.toFixed(0) + " g</b><br><br>" +
+
+    "主剤 必要量： <b>" + mainG.toFixed(1) + " g</b><br>" +
+    "硬化剤 必要量： <b>" + hardRounded.toFixed(0) + " g</b><br>" +
+    "シンナー 必要量： <b>" + thinG.toFixed(1) + " g</b><br><br>" +
+
+    "最終調合量： " + finalTotal.toFixed(1) + " g<br>" +
+    "<div class='note'>※硬化剤を10g単位で切り上げ、その硬化剤量を基準に主剤・シンナーを再計算しています。</div>";
 }
 </script>
 
